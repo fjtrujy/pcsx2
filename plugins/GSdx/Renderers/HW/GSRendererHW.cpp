@@ -1228,20 +1228,28 @@ void GSRendererHW::Draw()
 		m_texture_shuffle = (GSLocalMemory::m_psm[context->FRAME.PSM].bpp == 16) && (tex_psm.bpp == 16)
 			&& draw_sprite_tex && m_src->m_32_bits_fmt;
 
-		// Shadow_of_memories_Shadow_Flickering (Okami mustn't call this code)
+		// Okami mustn't call this code
 		if (m_texture_shuffle && m_vertex.next < 3 && PRIM->FST && (m_context->FRAME.FBMSK == 0)) {
 			// Avious dubious call to m_texture_shuffle on 16 bits games
 			// The pattern is severals column of 8 pixels. A single sprite
 			// smell fishy but a big sprite is wrong.
 
-			// Tomb Raider Angel of Darkness relies on this behavior to produce a fog effect.
-			// In this case, the address of the framebuffer and texture are the same. 
-			// The game will take RG => BA and then the BA => RG of next pixels. 
-			// However, only RG => BA needs to be emulated because RG isn't used.
 			GL_INS("WARNING: Possible misdetection of a texture shuffle effect");
-
 			GSVertex* v = &m_vertex.buff[0];
-			m_texture_shuffle = ((v[1].U - v[0].U) < 256) || m_context->FRAME.Block() == m_context->TEX0.TBP0;
+			m_texture_shuffle =
+				// Shadow of Memories/Destiny shouldn't call this code.
+				// Causes shadow flickering.
+				((v[1].U - v[0].U) < 256) ||
+				// Tomb Raider Angel of Darkness relies on this behavior to produce a fog effect.
+				// In this case, the address of the framebuffer and texture are the same. 
+				// The game will take RG => BA and then the BA => RG of next pixels. 
+				// However, only RG => BA needs to be emulated because RG isn't used.
+				m_context->FRAME.Block() == m_context->TEX0.TBP0 ||
+				// FIXME: Temporary solution, find a solution without relying on crc
+				// in the future.
+				// Onimusha requires texture shuffle to properly emulate shadows and
+				// other effects.
+				m_game.title == CRC::Onimusha3;
 		}
 
 		// Texture shuffle is not yet supported with strange clamp mode
