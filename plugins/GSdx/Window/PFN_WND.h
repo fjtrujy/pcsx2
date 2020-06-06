@@ -138,6 +138,16 @@ GL_EXT_LOAD_OPT(glEvaluateDepthValuesARB);
 #if defined(ENABLE_GL_ARB_sample_shading) && defined(GL_ARB_sample_shading)
 GL_EXT_LOAD_OPT(glMinSampleShadingARB);
 #endif
+#if defined(ENABLE_GL_ARB_shader_subroutine) && defined(GL_ARB_shader_subroutine)
+GL_EXT_LOAD_OPT(glGetSubroutineUniformLocation);
+GL_EXT_LOAD_OPT(glGetSubroutineIndex);
+GL_EXT_LOAD_OPT(glGetActiveSubroutineUniformiv);
+GL_EXT_LOAD_OPT(glGetActiveSubroutineUniformName);
+GL_EXT_LOAD_OPT(glGetActiveSubroutineName);
+GL_EXT_LOAD_OPT(glUniformSubroutinesuiv);
+GL_EXT_LOAD_OPT(glGetUniformSubroutineuiv);
+GL_EXT_LOAD_OPT(glGetProgramStageiv);
+#endif
 #if defined(ENABLE_GL_ARB_shading_language_include) && defined(GL_ARB_shading_language_include)
 GL_EXT_LOAD_OPT(glNamedStringARB);
 GL_EXT_LOAD_OPT(glDeleteNamedStringARB);
@@ -558,14 +568,6 @@ GL_EXT_LOAD_OPT(glUniformMatrix3x4dv);
 GL_EXT_LOAD_OPT(glUniformMatrix4x2dv);
 GL_EXT_LOAD_OPT(glUniformMatrix4x3dv);
 GL_EXT_LOAD_OPT(glGetUniformdv);
-GL_EXT_LOAD_OPT(glGetSubroutineUniformLocation);
-GL_EXT_LOAD_OPT(glGetSubroutineIndex);
-GL_EXT_LOAD_OPT(glGetActiveSubroutineUniformiv);
-GL_EXT_LOAD_OPT(glGetActiveSubroutineUniformName);
-GL_EXT_LOAD_OPT(glGetActiveSubroutineName);
-GL_EXT_LOAD_OPT(glUniformSubroutinesuiv);
-GL_EXT_LOAD_OPT(glGetUniformSubroutineuiv);
-GL_EXT_LOAD_OPT(glGetProgramStageiv);
 GL_EXT_LOAD_OPT(glPatchParameteri);
 GL_EXT_LOAD_OPT(glPatchParameterfv);
 GL_EXT_LOAD_OPT(glBindTransformFeedback);

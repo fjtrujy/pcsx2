@@ -80,6 +80,7 @@ typedef void (APIENTRYP PFNGLTEXTUREPAGECOMMITMENTEXTPROC) (GLuint texture, GLin
 // #define ENABLE_GL_ARB_robustness 1
 // #define ENABLE_GL_ARB_sample_locations 1
 // #define ENABLE_GL_ARB_sample_shading 1
+// #define ENABLE_GL_ARB_shader_subroutine 1
 // #define ENABLE_GL_ARB_shading_language_include 1
 // #define ENABLE_GL_ARB_sparse_buffer 1
 #define ENABLE_GL_ARB_sparse_texture 1
