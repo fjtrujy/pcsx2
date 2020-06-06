@@ -926,7 +926,8 @@ void GSDeviceOGL::Barrier(GLbitfield b)
 
 GLuint GSDeviceOGL::CompileVS(VSSelector sel)
 {
-	std::string macro = format("#define VS_INT_FST %d\n", sel.int_fst);
+	std::string macro = format("#define VS_INT_FST %d\n", sel.int_fst)
+		+ format("#define VS_ZCLAMP %d\n", sel.zclamp);
 
 	if (GLLoader::buggy_sso_dual_src)
 		return m_shader->CompileShader("tfx_vgs.glsl", "vs_main", GL_VERTEX_SHADER, m_shader_tfx_vgs.data(), macro);
@@ -983,6 +984,7 @@ GLuint GSDeviceOGL::CompilePS(PSSelector sel)
 		+ format("#define PS_FBMASK %d\n", sel.fbmask)
 		+ format("#define PS_HDR %d\n", sel.hdr)
 		+ format("#define PS_DITHER %d\n", sel.dither)
+		+ format("#define PS_ZCLAMP %d\n", sel.zclamp)
 		// + format("#define PS_PABE %d\n", sel.pabe)
 	;
 
