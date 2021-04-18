@@ -21,6 +21,14 @@
 #include <ctype.h>
 #include <string.h>
 #include <sys/stat.h>
+#include "ghc/filesystem.h"
+
+#if !defined(S_ISREG) && defined(S_IFMT) && defined(S_IFREG)
+#define S_ISREG(m) (((m)&S_IFMT) == S_IFREG)
+#endif
+#if !defined(S_ISDIR) && defined(S_IFMT) && defined(S_IFDIR)
+#define S_ISDIR(m) (((m)&S_IFMT) == S_IFDIR)
+#endif
 
 #ifndef O_BINARY
 #define O_BINARY 0
@@ -214,8 +222,7 @@ namespace R3000A
 		static int open(IOManFile** file, const std::string& full_path, s32 flags, u16 mode)
 		{
 			const std::string path = full_path.substr(full_path.find(':') + 1);
-			int native_mode = S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH; // 0644
-			int native_flags = O_BINARY;                             // necessary in Windows.
+			int native_flags = O_BINARY; // necessary in Windows.
 
 			switch (flags & IOP_O_RDWR)
 			{
@@ -236,8 +243,11 @@ namespace R3000A
 				native_flags |= O_CREAT;
 			if (flags & IOP_O_TRUNC)
 				native_flags |= O_TRUNC;
-
-			int hostfd = ::open(host_path(path).data(), native_flags, native_mode);
+#ifdef _WIN32
+			int hostfd = ::open(host_path(path).data(), native_flags);
+#else
+			int hostfd = ::open(host_path(path).data(), native_flags, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
+#endif
 			if (hostfd < 0)
 				return translate_error(hostfd);
 
@@ -290,10 +300,10 @@ namespace R3000A
 	class HostDir : public IOManDir
 	{
 	public:
-		DIR* dir;
+		ghc::filesystem::directory_iterator dir;
 		std::string path;
 
-		HostDir(DIR* native_dir, const std::string native_path)
+		HostDir(ghc::filesystem::directory_iterator native_dir, const std::string native_path)
 		{
 			dir = native_dir;
 			path = native_path;
@@ -306,8 +316,9 @@ namespace R3000A
 			const std::string relativePath = full_path.substr(full_path.find(':') + 1);
 			const std::string path = host_path(relativePath);
 
-			DIR* dirent = ::opendir(path.c_str());
-			if (!dirent)
+			std::error_code err;
+			ghc::filesystem::directory_iterator dirent(path.c_str(), err);
+			if (err)
 				return -IOP_ENOENT; // Should return ENOTDIR if path is a file?
 
 			*dir = new HostDir(dirent, relativePath);
@@ -320,20 +331,18 @@ namespace R3000A
 		virtual int read(void* buf)
 		{
 			fio_dirent_t* hostcontent = (fio_dirent_t*)buf;
-			struct dirent* dire = ::readdir(dir);
-
-			if (dire == NULL)
+			if (dir == ghc::filesystem::end(dir))
 				return 0;
 
-			strcpy(hostcontent->name, dire->d_name);
-			host_stat(host_path(path + dire->d_name), &hostcontent->stat);
+			strcpy(hostcontent->name, dir->path().c_str());
+			host_stat(host_path(path + std::string(dir->path())), &hostcontent->stat);
 
+			std::next(dir);
 			return 1;
 		}
 
 		virtual void close()
 		{
-			::closedir(dir);
 			delete this;
 		}
 	};
