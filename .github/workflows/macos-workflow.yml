@@ -6,6 +6,7 @@ on:
   push:
     branches:
       - master
+      - hostImprovement_windows
     paths-ignore:
       - .gitignore
       - "**/*.md"
