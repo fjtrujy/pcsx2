@@ -58,7 +58,7 @@ void Hle_SetElfPath(const char* elfFileName)
 {
 	DevCon.WriteLn("HLE Host: Will load ELF: %s\n", elfFileName);
 	ghc::filesystem::path elf_path{elfFileName};
-	hostRoot = elf_path.parent_path().concat("/");
+	hostRoot = elf_path.parent_path().concat("/").string();
 	Console.WriteLn("HLE Host: Set 'host:' root path to: %s\n", hostRoot.c_str());
 }
 
@@ -306,10 +306,10 @@ namespace R3000A
 			if (dir == ghc::filesystem::end(dir))
 				return 0;
 
-			strcpy(hostcontent->name, dir->path().filename().c_str());
-			host_stat(host_path(dir->path()), &hostcontent->stat);
+			strcpy(hostcontent->name, dir->path().filename().string().c_str());
+			host_stat(host_path(dir->path().string()), &hostcontent->stat);
 
-            static_cast<void>(std::next(dir)); /* This is for avoid warning of non used return value */
+			static_cast<void>(std::next(dir)); /* This is for avoid warning of non used return value */
 			return 1;
 		}
 
