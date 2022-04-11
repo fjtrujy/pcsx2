@@ -124,7 +124,7 @@ jobs:
           echo "::set-output name=sha8::$(echo ${GITHUB_SHA} | cut -c1-8)"
           echo "::set-output name=arch::$([ "${{ matrix.platform }}" == x86 ] && echo "32bit" || echo "64bit")"
 
-      - uses: actions/upload-artifact@v2
+      - uses: actions/upload-artifact@v3
         with:
           name: PCSX2-${{ steps.slug.outputs.arch }}-[${{ steps.slug.outputs.sha8 }}]
           path: build/pcsx2/pcsx2.tar.gz
