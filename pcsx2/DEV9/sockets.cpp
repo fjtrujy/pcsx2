@@ -247,8 +247,11 @@ SocketAdapter::SocketAdapter()
 	// registers a TCP_Session in inbound mode (synthesizing a SYN to the PS2).
 	if (!EmuConfig.DEV9.EthTCPPorts.empty())
 	{
-		const IP_Address configuredIP = *reinterpret_cast<const IP_Address*>(&EmuConfig.DEV9.PS2IP);
-		const IP_Address ps2RouteIP = (configuredIP.integer != 0) ? configuredIP : dhcpServer.ps2IP;
+		// In Sockets + InterceptDHCP mode the PS2 actually receives
+		// internalIP.x.x.100 (= dhcpServer.ps2IP) regardless of the user's
+		// configured PS2IP. We must address the synthesized SYN to that
+		// real IP or lwIP will drop it in ip4_input.
+		const IP_Address ps2RouteIP = dhcpServer.ps2IP;
 
 		std::istringstream portStream(EmuConfig.DEV9.EthTCPPorts);
 		std::string portStr;
