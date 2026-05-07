@@ -27,6 +27,9 @@ namespace Sessions
 			None,
 			SendingSYN_ACK,
 			SentSYN_ACK,
+			// Inbound (host-initiated) handshake: we sent a SYN to the PS2 and
+			// are waiting for its SYN+ACK before completing the 3WHS with our ACK.
+			AwaitingPS2_SYN_ACK,
 			Connected,
 			Closing_ClosedByPS2,
 			Closing_ClosedByPS2ThenRemote_WaitingForAck,
@@ -77,6 +80,18 @@ namespace Sessions
 	public:
 		TCP_Session(ConnectionKey parKey, PacketReader::IP::IP_Address parAdapterIP);
 
+		// Inbound (host-initiated) entry point. Takes an already-accepted host
+		// socket and synthesizes a SYN packet to the PS2 so the existing TCP
+		// state machine can drive the rest of the handshake.
+		// hostSrcPort: the host's ephemeral port (from accept()).
+		// ps2DstPort:  the PS2's listen port.
+		// Returns false on failure (caller is responsible for closing the socket).
+#ifdef _WIN32
+		bool InitInbound(SOCKET acceptedSocket, u16 hostSrcPort, u16 ps2DstPort);
+#elif defined(__POSIX__)
+		bool InitInbound(int acceptedSocket, u16 hostSrcPort, u16 ps2DstPort);
+#endif
+
 		virtual std::optional<ReceivedPayload> Recv();
 		virtual bool Send(PacketReader::IP::IP_Payload* payload);
 		virtual void Reset();
@@ -107,6 +122,10 @@ namespace Sessions
 		std::optional<ReceivedPayload> ConnectTCPComplete(bool success);
 		bool SendConnect(PacketReader::IP::TCP::TCP_Packet* tcp);
 		bool SendConnected(PacketReader::IP::TCP::TCP_Packet* tcp);
+
+		// Host accepted a connection -> we sent SYN to PS2 -> PS2 replied SYN+ACK
+		// -> we emit the final ACK and transition to Connected.
+		bool ReceiveInboundSYN_ACK(PacketReader::IP::TCP::TCP_Packet* tcp);
 
 		bool SendData(PacketReader::IP::TCP::TCP_Packet* tcp);
 		bool SendNoData(PacketReader::IP::TCP::TCP_Packet* tcp);

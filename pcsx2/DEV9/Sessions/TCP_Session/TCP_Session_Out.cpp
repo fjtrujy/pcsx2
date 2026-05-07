@@ -64,6 +64,8 @@ namespace Sessions
 					return false;
 				}
 				return true; // Ignore reconnect attempts while we are still attempting connection
+			case TCP_State::AwaitingPS2_SYN_ACK:
+				return ReceiveInboundSYN_ACK(&tcp);
 			case TCP_State::SentSYN_ACK:
 				return SendConnected(&tcp);
 			case TCP_State::Connected:
@@ -229,6 +231,138 @@ namespace Sessions
 		}
 
 		state = TCP_State::SendingSYN_ACK;
+		return true;
+	}
+
+	// Host has accepted a TCP connection from a remote: synthesize a SYN packet
+	// to the PS2 and let the existing state machine handle the rest.
+#ifdef _WIN32
+	bool TCP_Session::InitInbound(SOCKET acceptedSocket, u16 hostSrcPort, u16 ps2DstPort)
+#elif defined(__POSIX__)
+	bool TCP_Session::InitInbound(int acceptedSocket, u16 hostSrcPort, u16 ps2DstPort)
+#endif
+	{
+		client = acceptedSocket;
+
+		// Naming follows the PS2-initiates case: destPort is the host port
+		// (sourcePort on the wire when we send TO the PS2), srcPort is the PS2
+		// port. CreateBasePacket() relies on this convention.
+		destPort = hostSrcPort;
+		srcPort = ps2DstPort;
+
+		ResetMyNumbers();
+		expectedSeqNumber = 0; // Filled in once we see the PS2's SYN+ACK.
+		receivedPS2SeqNumbers.clear();
+		for (int i = 0; i < receivedPS2SeqNumberCount; i++)
+			receivedPS2SeqNumbers.push_back(0);
+
+#ifdef _WIN32
+		u_long blocking = 1;
+		int ret = ioctlsocket(client, FIONBIO, &blocking);
+#elif defined(__POSIX__)
+		int blocking = 1;
+		int ret = ioctl(client, FIONBIO, &blocking);
+#endif
+		if (ret != 0)
+			Console.Error("DEV9: TCP: Failed to set non-blocking on inbound socket. Error: %d",
+#ifdef _WIN32
+				WSAGetLastError());
+#elif defined(__POSIX__)
+				errno);
+#endif
+
+		constexpr int noDelay = true; // BOOL on Windows
+		ret = setsockopt(client, IPPROTO_TCP, TCP_NODELAY, reinterpret_cast<const char*>(&noDelay), sizeof(noDelay));
+		if (ret != 0)
+			Console.Error("DEV9: TCP: Failed to set TCP_NODELAY on inbound socket. Error: %d",
+#ifdef _WIN32
+				WSAGetLastError());
+#elif defined(__POSIX__)
+				errno);
+#endif
+
+		// Synthesize the SYN we will deliver to the PS2.
+		std::unique_ptr<TCP_Packet> syn = std::make_unique<TCP_Packet>(new PayloadData(0));
+		syn->sourcePort = destPort;        // host -> wire src
+		syn->destinationPort = srcPort;    // PS2  -> wire dst
+		syn->sequenceNumber = GetMyNumber();
+		IncrementMyNumber(1);              // SYN consumes one sequence number
+		syn->acknowledgementNumber = 0;
+		syn->SetSYN(true);
+		syn->windowSize = 2 * maxSegmentSize;
+		syn->options.push_back(new TCPopMSS(maxSegmentSize));
+		syn->options.push_back(new TCPopNOP());
+		syn->options.push_back(new TCPopWS(0));
+
+		state = TCP_State::AwaitingPS2_SYN_ACK;
+		PushRecvBuff(ReceivedPayload{destIP, std::move(syn)});
+
+		return true;
+	}
+
+	// PS2 has answered our SYN with SYN+ACK; complete the 3WHS with an ACK
+	// and transition to Connected.
+	bool TCP_Session::ReceiveInboundSYN_ACK(TCP_Packet* tcp)
+	{
+		if (!tcp->GetSYN() || !tcp->GetACK())
+		{
+			Console.Error("DEV9: TCP: Inbound: expected SYN+ACK, got SYN=%d ACK=%d FIN=%d RST=%d",
+				tcp->GetSYN(), tcp->GetACK(), tcp->GetFIN(), tcp->GetRST());
+			CloseByRemoteRST();
+			return true;
+		}
+
+		// PS2's ACK number must equal our outstanding SYN seq (i.e. GetMyNumber()).
+		const u32 mySeq = GetMyNumber();
+		if (tcp->acknowledgementNumber != mySeq)
+		{
+			Console.Error("DEV9: TCP: Inbound: PS2 ack mismatch, got %u expected %u",
+				tcp->acknowledgementNumber, mySeq);
+			CloseByRemoteRST();
+			return true;
+		}
+		UpdateReceivedAckNumber(tcp->acknowledgementNumber);
+		myNumberACKed.store(true);
+
+		expectedSeqNumber = tcp->sequenceNumber + 1;
+		receivedPS2SeqNumbers.clear();
+		for (int i = 0; i < receivedPS2SeqNumberCount; i++)
+			receivedPS2SeqNumbers.push_back(tcp->sequenceNumber);
+
+		for (size_t i = 0; i < tcp->options.size(); i++)
+		{
+			switch (tcp->options[i]->GetCode())
+			{
+				case 0: // End
+				case 1: // Nop
+					continue;
+				case 2: // MSS
+					maxSegmentSize = static_cast<TCPopMSS*>(tcp->options[i])->maxSegmentSize;
+					break;
+				case 3: // WindowScale
+					windowScale = static_cast<TCPopWS*>(tcp->options[i])->windowScale;
+					if (windowScale > 0)
+						Console.Error("DEV9: TCP: Inbound: non-zero window scale option");
+					break;
+				case 8: // Timestamp
+					lastRecivedTimeStamp = static_cast<TCPopTS*>(tcp->options[i])->senderTimeStamp;
+					sendTimeStamps = true;
+					timeStampStart = std::chrono::steady_clock::now();
+					break;
+				default:
+					Console.Error("DEV9: TCP: Inbound: unknown option %d", tcp->options[i]->GetCode());
+					break;
+			}
+		}
+
+		windowSize.store(tcp->windowSize << windowScale);
+
+		// Final ACK to complete the handshake.
+		std::unique_ptr<TCP_Packet> ack = CreateBasePacket();
+		ack->SetACK(true);
+		PushRecvBuff(ReceivedPayload{destIP, std::move(ack)});
+
+		state = TCP_State::Connected;
 		return true;
 	}
 

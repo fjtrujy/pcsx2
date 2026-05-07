@@ -1065,6 +1065,10 @@ struct Pcsx2Config
 		// Allows host-to-PS2 communication in Sockets mode (e.g. ps2link on port 18194).
 		std::string EthUDPPorts;
 
+		// Comma-separated list of TCP ports to listen on for inbound connections.
+		// Allows host-to-PS2 TCP servers in Sockets mode (e.g. ps2_http on port 80).
+		std::string EthTCPPorts;
+
 		bool HddEnable{false};
 		std::string HddFile;
 

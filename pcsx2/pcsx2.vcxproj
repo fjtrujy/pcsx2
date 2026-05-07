@@ -191,6 +191,7 @@
     <ClCompile Include="DEV9\PacketReader\IP\IP_Packet.cpp" />
     <ClCompile Include="DEV9\pcap_io.cpp" />
     <ClCompile Include="DEV9\Sessions\ICMP_Session\ICMP_Session.cpp" />
+    <ClCompile Include="DEV9\Sessions\TCP_Session\TCP_FixedPort.cpp" />
     <ClCompile Include="DEV9\Sessions\TCP_Session\TCP_Session.cpp" />
     <ClCompile Include="DEV9\Sessions\TCP_Session\TCP_Session_In.cpp" />
     <ClCompile Include="DEV9\Sessions\TCP_Session\TCP_Session_Out.cpp" />
@@ -639,6 +640,7 @@
     <ClInclude Include="DEV9\pcap_io.h" />
     <ClInclude Include="DEV9\Sessions\BaseSession.h" />
     <ClInclude Include="DEV9\Sessions\ICMP_Session\ICMP_Session.h" />
+    <ClInclude Include="DEV9\Sessions\TCP_Session\TCP_FixedPort.h" />
     <ClInclude Include="DEV9\Sessions\TCP_Session\TCP_Session.h" />
     <ClInclude Include="DEV9\Sessions\UDP_Session\UDP_Common.h" />
     <ClInclude Include="DEV9\Sessions\UDP_Session\UDP_FixedPort.h" />

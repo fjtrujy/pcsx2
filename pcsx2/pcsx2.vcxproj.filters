@@ -935,6 +935,9 @@
     <ClCompile Include="DEV9\Sessions\ICMP_Session\ICMP_Session.cpp">
       <Filter>System\Ps2\DEV9\Sessions\ICMP_Session</Filter>
     </ClCompile>
+    <ClCompile Include="DEV9\Sessions\TCP_Session\TCP_FixedPort.cpp">
+      <Filter>System\Ps2\DEV9\Sessions\TCP_Session</Filter>
+    </ClCompile>
     <ClCompile Include="DEV9\Sessions\TCP_Session\TCP_Session.cpp">
       <Filter>System\Ps2\DEV9\Sessions\TCP_Session</Filter>
     </ClCompile>
@@ -1849,6 +1852,9 @@
     </ClInclude>
     <ClInclude Include="DEV9\Sessions\ICMP_Session\ICMP_Session.h">
       <Filter>System\Ps2\DEV9\Sessions\ICMP_Session</Filter>
+    </ClInclude>
+    <ClInclude Include="DEV9\Sessions\TCP_Session\TCP_FixedPort.h">
+      <Filter>System\Ps2\DEV9\Sessions\TCP_Session</Filter>
     </ClInclude>
     <ClInclude Include="DEV9\Sessions\TCP_Session\TCP_Session.h">
       <Filter>System\Ps2\DEV9\Sessions\TCP_Session</Filter>

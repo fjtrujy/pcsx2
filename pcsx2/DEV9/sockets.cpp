@@ -26,6 +26,7 @@
 #include "Host.h"
 
 #include "Sessions/ICMP_Session/ICMP_Session.h"
+#include "Sessions/TCP_Session/TCP_FixedPort.h"
 #include "Sessions/TCP_Session/TCP_Session.h"
 #include "Sessions/UDP_Session/UDP_FixedPort.h"
 #include "Sessions/UDP_Session/UDP_Session.h"
@@ -238,6 +239,59 @@ SocketAdapter::SocketAdapter()
 			fixedUDPPorts.Add(port, fPort);
 
 			fPort->Init();
+		}
+	}
+
+	// Pre-bind configured TCP listen ports for inbound connections. Each port
+	// gets a TCP_FixedPort that runs an accept() thread; on each accept it
+	// registers a TCP_Session in inbound mode (synthesizing a SYN to the PS2).
+	if (!EmuConfig.DEV9.EthTCPPorts.empty())
+	{
+		const IP_Address configuredIP = *reinterpret_cast<const IP_Address*>(&EmuConfig.DEV9.PS2IP);
+		const IP_Address ps2RouteIP = (configuredIP.integer != 0) ? configuredIP : dhcpServer.ps2IP;
+
+		std::istringstream portStream(EmuConfig.DEV9.EthTCPPorts);
+		std::string portStr;
+		while (std::getline(portStream, portStr, ','))
+		{
+			portStr.erase(0, portStr.find_first_not_of(" \t"));
+			portStr.erase(portStr.find_last_not_of(" \t") + 1);
+			if (portStr.empty())
+				continue;
+
+			const int portNum = std::atoi(portStr.c_str());
+			if (portNum <= 0 || portNum > 65535)
+			{
+				Console.Error("DEV9: Socket: Invalid TCP listen port: %s", portStr.c_str());
+				continue;
+			}
+			const u16 port = static_cast<u16>(portNum);
+
+			ConnectionKey fKey{};
+			fKey.protocol = static_cast<u8>(IP_Type::TCP);
+			fKey.ps2Port = port;
+			fKey.srvPort = 0;
+
+			Console.WriteLn("DEV9: Socket: Pre-binding TCP listen port %d (PS2 IP: %d.%d.%d.%d)", port,
+				ps2RouteIP.bytes[0], ps2RouteIP.bytes[1], ps2RouteIP.bytes[2], ps2RouteIP.bytes[3]);
+
+			TCP_FixedPort* fPort = new TCP_FixedPort(fKey, adapterIP, port, ps2RouteIP, &connections,
+				[this](BaseSession* session) { HandleConnectionClosed(session); });
+			fPort->AddConnectionClosedHandler([this](BaseSession* session) { HandleFixedPortClosed(session); });
+
+			fPort->destIP = {};
+			fPort->sourceIP = ps2RouteIP;
+
+			connections.Add(fKey, fPort);
+			fixedTCPPorts.Add(port, fPort);
+
+			if (!fPort->Init())
+			{
+				Console.Error("DEV9: Socket: Failed to start TCP listener on port %d, removing", port);
+				connections.Remove(fKey);
+				fixedTCPPorts.Remove(port);
+				delete fPort;
+			}
 		}
 	}
 
@@ -630,7 +684,10 @@ void SocketAdapter::HandleFixedPortClosed(BaseSession* sender)
 	const ConnectionKey key = sender->key;
 	if (!connections.Remove(key))
 		return;
-	fixedUDPPorts.Remove(key.ps2Port);
+	if (key.protocol == static_cast<u8>(IP_Type::TCP))
+		fixedTCPPorts.Remove(key.ps2Port);
+	else
+		fixedUDPPorts.Remove(key.ps2Port);
 
 	// Defer deleting the connection untill we have left the calling session's callstack
 	if (std::this_thread::get_id() == sendThreadId)
@@ -647,6 +704,21 @@ void SocketAdapter::close()
 
 SocketAdapter::~SocketAdapter()
 {
+	// Tear down TCP listeners first: their accept threads can otherwise race
+	// with the connection-snapshot loop below and publish new sessions that
+	// would leak through connections.Clear() without being destroyed.
+	std::vector<u16> tcpListenPorts = fixedTCPPorts.GetKeys();
+	for (u16 listenPort : tcpListenPorts)
+	{
+		BaseSession* listener;
+		if (!fixedTCPPorts.TryGetValue(listenPort, &listener))
+			continue;
+		ConnectionKey listenerKey = listener->key;
+		connections.Remove(listenerKey);
+		fixedTCPPorts.Remove(listenPort);
+		delete listener; // joins the accept thread before returning
+	}
+
 	//Force close all sessions
 	std::vector<ConnectionKey> keys = connections.GetKeys();
 	DevCon.WriteLn("DEV9: Socket: Closing %d Connections", keys.size());
@@ -660,6 +732,7 @@ SocketAdapter::~SocketAdapter()
 	}
 	connections.Clear();
 	fixedUDPPorts.Clear(); //fixedUDP sessions already deleted via connections
+	fixedTCPPorts.Clear(); //fixedTCP sessions already deleted via connections
 
 	//Clear out any delete queues
 	DevCon.WriteLn("DEV9: Socket: Found %d Connections in send delete queue", deleteQueueSendThread.size());

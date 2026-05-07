@@ -306,6 +306,7 @@ set(pcsx2DEV9Sources
 	DEV9/PacketReader/EthernetFrameEditor.cpp
 	DEV9/Sessions/BaseSession.cpp
 	DEV9/Sessions/ICMP_Session/ICMP_Session.cpp
+	DEV9/Sessions/TCP_Session/TCP_FixedPort.cpp
 	DEV9/Sessions/TCP_Session/TCP_Session.cpp
 	DEV9/Sessions/TCP_Session/TCP_Session_In.cpp
 	DEV9/Sessions/TCP_Session/TCP_Session_Out.cpp
@@ -354,6 +355,7 @@ set(pcsx2DEV9Headers
 	DEV9/pcap_io.h
 	DEV9/Sessions/BaseSession.h
 	DEV9/Sessions/ICMP_Session/ICMP_Session.h
+	DEV9/Sessions/TCP_Session/TCP_FixedPort.h
 	DEV9/Sessions/TCP_Session/TCP_Session.h
 	DEV9/Sessions/UDP_Session/UDP_Common.h
 	DEV9/Sessions/UDP_Session/UDP_FixedPort.h
