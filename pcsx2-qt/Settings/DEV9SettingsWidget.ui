@@ -210,6 +210,26 @@
             </property>
            </widget>
           </item>
+          <item row="7" column="0">
+           <widget class="QLabel" name="ethTCPPortsLabel">
+            <property name="text">
+             <string>TCP Ports:</string>
+            </property>
+            <property name="buddy">
+             <cstring>ethTCPPorts</cstring>
+            </property>
+           </widget>
+          </item>
+          <item row="7" column="1" colspan="2">
+           <widget class="QLineEdit" name="ethTCPPorts">
+            <property name="placeholderText">
+             <string>Comma-separated list (e.g. 80, 6789)</string>
+            </property>
+            <property name="toolTip">
+             <string>Listen on these TCP ports on the host and forward inbound connections to the PS2. Required to drive a TCP server running on the PS2 from host tools in Sockets mode.</string>
+            </property>
+           </widget>
+          </item>
          </layout>
         </widget>
         <widget class="QWidget" name="tab_2">

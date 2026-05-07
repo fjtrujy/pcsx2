@@ -135,6 +135,9 @@ DEV9SettingsWidget::DEV9SettingsWidget(SettingsWindow* settings_dialog, QWidget*
 	// UDP Ports
 	SettingWidgetBinder::BindWidgetToStringSetting(sif, m_ui.ethUDPPorts, "DEV9/Eth", "EthUDPPorts", "");
 
+	// TCP Ports
+	SettingWidgetBinder::BindWidgetToStringSetting(sif, m_ui.ethTCPPorts, "DEV9/Eth", "EthTCPPorts", "");
+
 	//////////////////////////////////////////////////////////////////////////
 	// DNS Settings
 	//////////////////////////////////////////////////////////////////////////
